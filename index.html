@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fe 240 ping</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .checkbox-group input {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #stopBtn {
+            background-color: #dc3545;
+            margin-top: 10px;
+            display: none;
+        }
+        #stopBtn:hover {
+            background-color: #c82333;
+        }
+        #responseArea {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>fe 240 ping</h2>
+    
+    <div class="form-group">
+        <label for="callerNumber">Caller Number (+1 added automatically):</label>
+        <input type="text" id="callerNumber" placeholder="e.g. 2012186218">
+    </div>
+    
+    <div class="checkbox-group">
+        <input type="checkbox" id="autoPing">
+        <label for="autoPing" style="margin-bottom:0; font-weight:normal; cursor:pointer;">Auto Ping every 5 seconds until 'Reserved'</label>
+    </div>
+    
+    <button id="pingBtn" onclick="startPing()">Send Ping</button>
+    <button id="stopBtn" onclick="stopAutoPing()">Stop Auto Ping</button>
+    
+    <div>
+        <label style="margin-top: 15px;">Response Log:</label>
+        <div id="responseArea">Ready to ping...</div>
+    </div>
+</div>
+
+<script>
+    let autoPingInterval = null;
+
+    function formatCallerNumber(rawNum) {
+        let cleaned = rawNum.replace(/[^0-9]/g, '');
+        if (cleaned.length === 11 && cleaned.startsWith('1')) {
+            return '+' + cleaned;
+        } else if (cleaned.length === 10) {
+            return '+1' + cleaned;
+        }
+        return rawNum.startsWith('+') ? rawNum : '+' + cleaned;
+    }
+
+    function sendPingRequest() {
+        let rawInput = document.getElementById('callerNumber').value.trim();
+        if (!rawInput) {
+            alert('Please enter a valid caller number.');
+            stopAutoPing();
+            return;
+        }
+
+        let formattedCaller = formatCallerNumber(rawInput);
+        let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
+
+        let responseDiv = document.getElementById('responseArea');
+        responseDiv.innerHTML = `Sending ping for: ${formattedCaller}...\n` + responseDiv.innerHTML;
+
+        fetch(url)
+        .then(response => response.text())
+        .then(data => {
+            let timestamp = new Date().toLocaleTimeString();
+            let logMsg = `[${timestamp}] Response: ${data}\n`;
+            responseDiv.innerHTML = logMsg + responseDiv.innerHTML;
+
+            if (data.toLowerCase().includes('reserved')) {
+                responseDiv.innerHTML = `[${timestamp}] SUCCESS: 'Reserved' detected! Stopping auto-ping.\n` + responseDiv.innerHTML;
+                stopAutoPing();
+            }
+        })
+        .catch(error => {
+            let timestamp = new Date().toLocaleTimeString();
+            let logMsg = `[${timestamp}] Error: ${error.message}\n`;
+            responseDiv.innerHTML = logMsg + responseDiv.innerHTML;
+        });
+    }
+
+    function startPing() {
+        let isAuto = document.getElementById('autoPing').checked;
+        
+        sendPingRequest();
+
+        if (isAuto) {
+            document.getElementById('pingBtn').disabled = true;
+            document.getElementById('stopBtn').style.display = 'block';
+            
+            if (autoPingInterval) clearInterval(autoPingInterval);
+            
+            autoPingInterval = setInterval(() => {
+                sendPingRequest();
+            }, 5000);
+        }
+    }
+
+    function stopAutoPing() {
+        if (autoPingInterval) {
+            clearInterval(autoPingInterval);
+            autoPingInterval = null;
+        }
+        document.getElementById('pingBtn').disabled = false;
+        document.getElementById('stopBtn').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
