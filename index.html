@@ -244,12 +244,12 @@
 
             let dataStr = data.toLowerCase();
             if (dataStr.includes('reserved')) {
-                let inboundNum = parsedData.inbound_number || "Reserved";
+                let inboundNum = parsedData.inbound_number || "N/A";
                 lastInboundNumber = inboundNum;
                 
                 alertBox.className = 'alert-box alert-success';
                 alertBox.style.display = 'flex';
-                alertBox.innerHTML = `<span>SUCCESS: Reserved! Inbound DID: <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
+                alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
                 stopAutoPing();
             } else if (dataStr.includes('no-target') || dataStr.includes('reject') || dataStr.includes('error')) {
                 alertBox.className = 'alert-box alert-error';
