@@ -104,6 +104,9 @@
             font-weight: bold;
             margin-bottom: 15px;
             display: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .alert-error {
             background-color: #f8d7da;
@@ -114,6 +117,25 @@
             background-color: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
+        }
+        .copy-btn {
+            background-color: #155724;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .copy-btn:hover {
+            background-color: #0b2e13;
+        }
+        .json-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .json-box {
             background-color: #f8f9fa;
@@ -137,7 +159,7 @@
     
     <div class="form-group">
         <label for="callerNumber">Client Phone (CID - Required)</label>
-        <input type="text" id="callerNumber" placeholder="12294378719">
+        <input type="text" id="callerNumber" placeholder="12294378719" oninput="checkNewNumber()">
     </div>
 
     <div class="checkbox-container">
@@ -153,12 +175,17 @@
     <h2>Bid Response</h2>
     <div id="statusAlert" class="alert-box"></div>
     
-    <label>Full JSON Response</label>
+    <div class="json-header-row">
+        <label style="margin-bottom:0;">Full JSON Response</label>
+        <button class="copy-btn" onclick="copyJsonText()" style="background-color: #6c757d;">Copy JSON</button>
+    </div>
     <div id="jsonResponse" class="json-box">Waiting for ping request...</div>
 </div>
 
 <script>
     let autoPingInterval = null;
+    let lastSearchedNumber = "";
+    let lastInboundNumber = "";
 
     function formatCallerNumber(rawNum) {
         let cleaned = rawNum.replace(/[^0-9]/g, '');
@@ -170,6 +197,16 @@
         return rawNum.startsWith('+') ? rawNum : '+' + cleaned;
     }
 
+    function checkNewNumber() {
+        let currentInput = document.getElementById('callerNumber').value.trim();
+        let formattedCurrent = formatCallerNumber(currentInput);
+        if (formattedCurrent !== lastSearchedNumber && lastSearchedNumber !== "") {
+            stopAutoPing();
+            document.getElementById('statusAlert').style.display = 'none';
+            document.getElementById('jsonResponse').innerHTML = "Ready for new number: " + formattedCurrent;
+        }
+    }
+
     function sendPingRequest() {
         let rawInput = document.getElementById('callerNumber').value.trim();
         if (!rawInput) {
@@ -179,12 +216,19 @@
         }
 
         let formattedCaller = formatCallerNumber(rawInput);
+        
+        if (formattedCaller !== lastSearchedNumber) {
+            lastSearchedNumber = formattedCaller;
+            document.getElementById('jsonResponse').innerHTML = "";
+        }
+
         let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
 
         let alertBox = document.getElementById('statusAlert');
         let jsonBox = document.getElementById('jsonResponse');
 
-        jsonBox.innerHTML = `Sending ping for ${formattedCaller}...\n` + jsonBox.innerHTML;
+        let timestamp = new Date().toLocaleTimeString();
+        let pingLogHeader = `--- Sending ping for ${formattedCaller} [${timestamp}] ---\n`;
 
         fetch(url)
         .then(response => response.text())
@@ -192,32 +236,51 @@
             let parsedData;
             try {
                 parsedData = JSON.parse(data);
-                jsonBox.innerHTML = JSON.stringify(parsedData, null, 2) + "\n\n" + jsonBox.innerHTML;
+                jsonBox.innerHTML = pingLogHeader + JSON.stringify(parsedData, null, 2) + "\n\n" + jsonBox.innerHTML;
             } catch (e) {
-                jsonBox.innerHTML = data + "\n\n" + jsonBox.innerHTML;
+                parsedData = {};
+                jsonBox.innerHTML = pingLogHeader + data + "\n\n" + jsonBox.innerHTML;
             }
 
             let dataStr = data.toLowerCase();
             if (dataStr.includes('reserved')) {
+                let inboundNum = parsedData.inbound_number || "Reserved";
+                lastInboundNumber = inboundNum;
+                
                 alertBox.className = 'alert-box alert-success';
-                alertBox.style.display = 'block';
-                alertBox.innerHTML = `SUCCESS: Lead Reserved!`;
+                alertBox.style.display = 'flex';
+                alertBox.innerHTML = `<span>SUCCESS: Reserved! Inbound DID: <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
                 stopAutoPing();
-            } else if (dataStr.includes('reject') || dataStr.includes('error')) {
+            } else if (dataStr.includes('no-target') || dataStr.includes('reject') || dataStr.includes('error')) {
                 alertBox.className = 'alert-box alert-error';
-                alertBox.style.display = 'block';
-                alertBox.innerHTML = `REJECTED: Check response details below.`;
+                alertBox.style.display = 'flex';
+                alertBox.innerHTML = `<span>STATUS: ${parsedData.status || 'No Target / Rejected'}</span>`;
             } else {
                 alertBox.className = 'alert-box alert-success';
-                alertBox.style.display = 'block';
-                alertBox.innerHTML = `Response received successfully.`;
+                alertBox.style.display = 'flex';
+                alertBox.innerHTML = `<span>Response received successfully.</span>`;
             }
         })
         .catch(error => {
             alertBox.className = 'alert-box alert-error';
-            alertBox.style.display = 'block';
-            alertBox.innerHTML = `Error: ${error.message}`;
-            jsonBox.innerHTML = `Error: ${error.message}\n` + jsonBox.innerHTML;
+            alertBox.style.display = 'flex';
+            alertBox.innerHTML = `<span>Error: ${error.message}</span>`;
+            jsonBox.innerHTML = pingLogHeader + `Error: ${error.message}\n` + jsonBox.innerHTML;
+        });
+    }
+
+    function copyDid() {
+        if (lastInboundNumber) {
+            navigator.clipboard.writeText(lastInboundNumber).then(() => {
+                alert("DID " + lastInboundNumber + " copied to clipboard!");
+            });
+        }
+    }
+
+    function copyJsonText() {
+        let jsonText = document.getElementById('jsonResponse').innerText;
+        navigator.clipboard.writeText(jsonText).then(() => {
+            alert("Full JSON copied to clipboard!");
         });
     }
 
@@ -234,7 +297,7 @@
             
             autoPingInterval = setInterval(() => {
                 sendPingRequest();
-            }, 10000); // 10 seconds interval
+            }, 10000);
         }
     }
 
