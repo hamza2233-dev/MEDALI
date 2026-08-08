@@ -56,7 +56,7 @@
         .checkbox-container {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .checkbox-container input {
             margin-right: 8px;
@@ -69,6 +69,13 @@
             font-weight: normal;
             color: #444;
             cursor: pointer;
+        }
+        .test-mode-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
         }
         .btn-green {
             width: 100%;
@@ -162,6 +169,11 @@
         <input type="text" id="callerNumber" placeholder="12294378719" oninput="checkNewNumber()">
     </div>
 
+    <div class="test-mode-box checkbox-container">
+        <input type="checkbox" id="testMode">
+        <label for="testMode" style="font-weight: bold; color: #856404;">🧪 Enable Test Mode (Simulate Reserved Response)</label>
+    </div>
+
     <div class="checkbox-container">
         <input type="checkbox" id="autoPing">
         <label for="autoPing">Auto Ping every 10 seconds until 'Reserved'</label>
@@ -187,17 +199,13 @@
     let lastSearchedNumber = "";
     let lastInboundNumber = "";
 
-    // Speaks "Lead Reserved" out loud using browser speech synthesis
     function speakReserved() {
         if ('speechSynthesis' in window) {
-            // Cancel any prior queued speech
             window.speechSynthesis.cancel();
-            
             let utterance = new SpeechSynthesisUtterance("Lead Reserved!");
-            utterance.rate = 1.0; // Normal speed
-            utterance.pitch = 1.1; // Slightly higher pitch for clear attention
-            utterance.volume = 1.0; // Max volume
-            
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1;
+            utterance.volume = 1.0;
             window.speechSynthesis.speak(utterance);
         }
     }
@@ -222,6 +230,18 @@
         }
     }
 
+    function handleSuccessfulResponse(parsedData, jsonBox, alertBox, pingLogHeader) {
+        let inboundNum = parsedData.inbound_number || "+18446859030";
+        lastInboundNumber = inboundNum;
+        
+        speakReserved();
+
+        alertBox.className = 'alert-box alert-success';
+        alertBox.style.display = 'flex';
+        alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
+        stopAutoPing();
+    }
+
     function sendPingRequest() {
         let rawInput = document.getElementById('callerNumber').value.trim();
         if (!rawInput) {
@@ -237,13 +257,31 @@
             document.getElementById('jsonResponse').innerHTML = "";
         }
 
-        let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
-
         let alertBox = document.getElementById('statusAlert');
         let jsonBox = document.getElementById('jsonResponse');
-
         let timestamp = new Date().toLocaleTimeString();
         let pingLogHeader = `--- Sending ping for ${formattedCaller} [${timestamp}] ---\n`;
+
+        // CHECK IF TEST MODE IS ENABLED
+        let isTestMode = document.getElementById('testMode').checked;
+        if (isTestMode) {
+            let mockData = {
+                "uuid": "test-uuid-mock-9999",
+                "status": "reserved",
+                "retreaver_payout": 12,
+                "retreaver_seconds": 120,
+                "inbound_number": "+18446859030",
+                "sip_address": "test@sip.rtb.retreaver.com",
+                "expires_at": new Date(Date.now() + 120000).toISOString()
+            };
+            
+            jsonBox.innerHTML = pingLogHeader + JSON.stringify(mockData, null, 2) + "\n\n" + jsonBox.innerHTML;
+            handleSuccessfulResponse(mockData, jsonBox, alertBox, pingLogHeader);
+            return;
+        }
+
+        // Normal live API call
+        let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
 
         fetch(url)
         .then(response => response.text())
@@ -259,16 +297,7 @@
 
             let dataStr = data.toLowerCase();
             if (dataStr.includes('reserved')) {
-                let inboundNum = parsedData.inbound_number || "N/A";
-                lastInboundNumber = inboundNum;
-                
-                // Speak out loud!
-                speakReserved();
-
-                alertBox.className = 'alert-box alert-success';
-                alertBox.style.display = 'flex';
-                alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
-                stopAutoPing();
+                handleSuccessfulResponse(parsedData, jsonBox, alertBox, pingLogHeader);
             } else if (dataStr.includes('no-target') || dataStr.includes('reject') || dataStr.includes('error')) {
                 alertBox.className = 'alert-box alert-error';
                 alertBox.style.display = 'flex';
