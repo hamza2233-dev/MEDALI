@@ -53,18 +53,28 @@
             outline: none;
             box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15);
         }
-        .checkbox-container {
-            display: flex;
-            align-items: center;
+        .ping-options {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 12px 15px;
+            border-radius: 6px;
             margin-bottom: 20px;
         }
-        .checkbox-container input {
+        .radio-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .radio-container:last-child {
+            margin-bottom: 0;
+        }
+        .radio-container input {
             margin-right: 8px;
             width: 16px;
             height: 16px;
             cursor: pointer;
         }
-        .checkbox-container label {
+        .radio-container label {
             margin-bottom: 0;
             font-weight: normal;
             color: #444;
@@ -162,9 +172,20 @@
         <input type="text" id="callerNumber" placeholder="+12294378719" oninput="checkNewNumber()">
     </div>
 
-    <div class="checkbox-container">
-        <input type="checkbox" id="autoPing">
-        <label for="autoPing">Auto Ping every 10 seconds until 'Reserved'</label>
+    <label>Ping Mode Options</label>
+    <div class="ping-options">
+        <div class="radio-container">
+            <input type="radio" id="pingManual" name="pingMode" checked>
+            <label for="pingManual">Manual Single Ping</label>
+        </div>
+        <div class="radio-container">
+            <input type="radio" id="pingAuto1" name="pingMode">
+            <label for="pingAuto1">Auto Ping every 10 seconds (Option 1)</label>
+        </div>
+        <div class="radio-container">
+            <input type="radio" id="pingAuto2" name="pingMode">
+            <label for="pingAuto2">Auto Ping every 10 seconds (Option 2)</label>
+        </div>
     </div>
     
     <button id="pingBtn" class="btn-green" onclick="startPing()">Run Live Ping</button>
@@ -307,16 +328,18 @@
     }
 
     function startPing() {
-        let isAuto = document.getElementById('autoPing').checked;
+        let isAuto1 = document.getElementById('pingAuto1').checked;
+        let isAuto2 = document.getElementById('pingAuto2').checked;
         
         sendPingRequest();
 
-        if (isAuto) {
+        if (isAuto1 || isAuto2) {
             document.getElementById('pingBtn').disabled = true;
             document.getElementById('stopBtn').style.display = 'block';
             
             if (autoPingInterval) clearInterval(autoPingInterval);
             
+            // Both options run every 10 seconds as requested
             autoPingInterval = setInterval(() => {
                 sendPingRequest();
             }, 10000);
