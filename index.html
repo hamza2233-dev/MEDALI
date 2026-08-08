@@ -187,6 +187,21 @@
     let lastSearchedNumber = "";
     let lastInboundNumber = "";
 
+    // Speaks "Lead Reserved" out loud using browser speech synthesis
+    function speakReserved() {
+        if ('speechSynthesis' in window) {
+            // Cancel any prior queued speech
+            window.speechSynthesis.cancel();
+            
+            let utterance = new SpeechSynthesisUtterance("Lead Reserved!");
+            utterance.rate = 1.0; // Normal speed
+            utterance.pitch = 1.1; // Slightly higher pitch for clear attention
+            utterance.volume = 1.0; // Max volume
+            
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
     function formatCallerNumber(rawNum) {
         let cleaned = rawNum.replace(/[^0-9]/g, '');
         if (cleaned.length === 11 && cleaned.startsWith('1')) {
@@ -247,6 +262,9 @@
                 let inboundNum = parsedData.inbound_number || "N/A";
                 lastInboundNumber = inboundNum;
                 
+                // Speak out loud!
+                speakReserved();
+
                 alertBox.className = 'alert-box alert-success';
                 alertBox.style.display = 'flex';
                 alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${inboundNum}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
