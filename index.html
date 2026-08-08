@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>fe 240 ping</title>
+    <title>MED 120 PING</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -56,7 +56,7 @@
         .checkbox-container {
             display: flex;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         .checkbox-container input {
             margin-right: 8px;
@@ -69,13 +69,6 @@
             font-weight: normal;
             color: #444;
             cursor: pointer;
-        }
-        .test-mode-box {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
         }
         .btn-green {
             width: 100%;
@@ -162,16 +155,11 @@
 <body>
 
 <div class="card">
-    <h2>fe 240 ping</h2>
+    <h2>MED 120 PING</h2>
     
     <div class="form-group">
         <label for="callerNumber">Client Phone (CID - Required)</label>
         <input type="text" id="callerNumber" placeholder="+12294378719" oninput="checkNewNumber()">
-    </div>
-
-    <div class="test-mode-box checkbox-container">
-        <input type="checkbox" id="testMode">
-        <label for="testMode" style="font-weight: bold; color: #856404;">🧪 Test Run Mode (Simulate Successful Reserve)</label>
     </div>
 
     <div class="checkbox-container">
@@ -238,19 +226,6 @@
         }
     }
 
-    function handleSuccessfulResponse(parsedData, jsonBox, alertBox, pingLogHeader) {
-        let rawInbound = parsedData.inbound_number || "+18446859030";
-        lastInboundNumber = rawInbound;
-        let displayDid = stripPlusOne(rawInbound);
-        
-        speakReserved();
-
-        alertBox.className = 'alert-box alert-success';
-        alertBox.style.display = 'flex';
-        alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${displayDid}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
-        stopAutoPing();
-    }
-
     function sendPingRequest() {
         let rawInput = document.getElementById('callerNumber').value.trim();
         if (!rawInput) {
@@ -266,30 +241,12 @@
             document.getElementById('jsonResponse').innerHTML = "";
         }
 
+        let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
+
         let alertBox = document.getElementById('statusAlert');
         let jsonBox = document.getElementById('jsonResponse');
         let timestamp = new Date().toLocaleTimeString();
         let pingLogHeader = `--- Sending ping for ${formattedCaller} [${timestamp}] ---\n`;
-
-        // CHECK IF TEST RUN MODE IS ENABLED
-        let isTestMode = document.getElementById('testMode').checked;
-        if (isTestMode) {
-            let mockData = {
-                "uuid": "test-uuid-mock-9999",
-                "status": "reserved",
-                "retreaver_payout": 12,
-                "retreaver_seconds": 120,
-                "inbound_number": "+18446859030",
-                "sip_address": "test@sip.rtb.retreaver.com",
-                "expires_at": new Date(Date.now() + 120000).toISOString()
-            };
-            
-            jsonBox.innerHTML = pingLogHeader + JSON.stringify(mockData, null, 2) + "\n\n" + jsonBox.innerHTML;
-            handleSuccessfulResponse(mockData, jsonBox, alertBox, pingLogHeader);
-            return;
-        }
-
-        let url = `/api/ping?caller_number=${encodeURIComponent(formattedCaller)}`;
 
         fetch(url)
         .then(response => response.text())
@@ -305,7 +262,16 @@
 
             let dataStr = data.toLowerCase();
             if (dataStr.includes('reserved')) {
-                handleSuccessfulResponse(parsedData, jsonBox, alertBox, pingLogHeader);
+                let rawInbound = parsedData.inbound_number || "";
+                lastInboundNumber = rawInbound;
+                let displayDid = stripPlusOne(rawInbound);
+                
+                speakReserved();
+
+                alertBox.className = 'alert-box alert-success';
+                alertBox.style.display = 'flex';
+                alertBox.innerHTML = `<span>SUCCESS: Lead Reserved! - <b>${displayDid}</b></span> <button class="copy-btn" onclick="copyDid()">Copy DID</button>`;
+                stopAutoPing();
             } else if (dataStr.includes('no-target') || dataStr.includes('reject') || dataStr.includes('error')) {
                 alertBox.className = 'alert-box alert-error';
                 alertBox.style.display = 'flex';
