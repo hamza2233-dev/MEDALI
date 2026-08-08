@@ -179,12 +179,12 @@
             <label for="pingManual">Manual Single Ping</label>
         </div>
         <div class="radio-container">
-            <input type="radio" id="pingAuto1" name="pingMode">
-            <label for="pingAuto1">Auto Ping every 10 seconds (Option 1)</label>
+            <input type="radio" id="pingAuto10" name="pingMode">
+            <label for="pingAuto10">Auto Ping every 10 seconds</label>
         </div>
         <div class="radio-container">
-            <input type="radio" id="pingAuto2" name="pingMode">
-            <label for="pingAuto2">Auto Ping every 10 seconds (Option 2)</label>
+            <input type="radio" id="pingAuto5" name="pingMode">
+            <label for="pingAuto5">Auto Ping every 5 seconds</label>
         </div>
     </div>
     
@@ -328,21 +328,22 @@
     }
 
     function startPing() {
-        let isAuto1 = document.getElementById('pingAuto1').checked;
-        let isAuto2 = document.getElementById('pingAuto2').checked;
+        let isAuto10 = document.getElementById('pingAuto10').checked;
+        let isAuto5 = document.getElementById('pingAuto5').checked;
         
         sendPingRequest();
 
-        if (isAuto1 || isAuto2) {
+        if (isAuto10 || isAuto5) {
             document.getElementById('pingBtn').disabled = true;
             document.getElementById('stopBtn').style.display = 'block';
             
             if (autoPingInterval) clearInterval(autoPingInterval);
             
-            // Both options run every 10 seconds as requested
+            let intervalTime = isAuto5 ? 5000 : 10000;
+            
             autoPingInterval = setInterval(() => {
                 sendPingRequest();
-            }, 10000);
+            }, intervalTime);
         }
     }
 
